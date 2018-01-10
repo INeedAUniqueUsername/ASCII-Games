@@ -4,13 +4,13 @@
 #include<ctime>
 #include<string>
 using namespace std;
-void print(vector< vector<bool> >);
-void print(vector< vector<char> >);
-void revealTile(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y);
-bool isValid(vector< vector<bool> > field, int x, int y);
-int countAdjacentMines(vector< vector<bool> > field, int x, int y);
-int calcScore(vector< vector<bool> > field, vector< vector<char> > tiles);
-bool revealAdjacentMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y);
+void print(const vector< vector<bool> > &field);
+void print(const vector< vector<char> > &tiles);
+void revealTile(const vector< vector<bool> > &field, vector< vector<char> > &tiles, int x, int y);
+bool isValid(const vector< vector<bool> > &field, int x, int y);
+int countAdjacentMines(const vector< vector<bool> > &field, int x, int y);
+int calcScore(const vector< vector<bool> > &field, const vector< vector<char> > &tiles);
+bool revealAdjacentMines(const vector< vector<bool> > &field, vector< vector<char> > &tiles, int x, int y);
 void play();
 bool playAgain();
 int main() {
@@ -207,7 +207,7 @@ void play() {
 	}
 }
 //For each known tile, we take number of surrounding mines plus one and add that to our score
-int calcScore(vector< vector<bool> > field, vector< vector<char> > tiles) {
+int calcScore(const vector< vector<bool> > &field, const vector< vector<char> > &tiles) {
 	int score = 0;
 	for(int y = 0; y < tiles.size(); y++) {
 		for(int x = 0; x < tiles[y].size(); x++) {
@@ -224,7 +224,7 @@ int calcScore(vector< vector<bool> > field, vector< vector<char> > tiles) {
 	return score;
 }
 //Reveal what's actually on this tile besides the player
-void revealTile(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y) {
+void revealTile(const vector< vector<bool> > &field, vector< vector<char> > &tiles, int x, int y) {
 	//Check if this is a mine
 	if(field.at(y).at(x)) {
 		tiles.at(y).at(x) = 'X';
@@ -240,7 +240,7 @@ void revealTile(vector< vector<bool> > field, vector< vector<char> > &tiles, int
 }
 //Automatically reveals unknown spaces around this tile if enough information is known about surrounding mines
 //Return true if any mines were revealed
-bool revealAdjacentMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y) {
+bool revealAdjacentMines(const vector< vector<bool> > &field, vector< vector<char> > &tiles, int x, int y) {
 	int mines = countAdjacentMines(field, x, y);
 	int knownMines = 0;
 	int unknown = 0;
@@ -286,7 +286,7 @@ bool revealAdjacentMines(vector< vector<bool> > field, vector< vector<char> > &t
 	return false;
 }
 //Count the number of mines surrounding (immediately adjacent to) this tile
-int countAdjacentMines(vector< vector<bool> > field, int x, int y) {
+int countAdjacentMines(const vector< vector<bool> > &field, int x, int y) {
 	int count = 0;
 	for(int x2 = x-1; x2 < x+2; x2++) {
 		for(int y2 = y-1; y2 < y+2; y2++) {
@@ -300,11 +300,11 @@ int countAdjacentMines(vector< vector<bool> > field, int x, int y) {
 	return count;
 }
 //Check if this position exists on the field
-bool isValid(vector< vector<bool> > field, int x, int y) {
+bool isValid(const vector< vector<bool> > &field, int x, int y) {
 	return -1 < y && y < field.size() && -1 < x && x < field[y].size();
 }
 //Print the field to console
-void print(vector< vector<bool> > field) {
+void print(const vector< vector<bool> > &field) {
 	for(int y = 0; y < field.size(); y++) {
 		for(int x = 0; x < field[y].size(); x++) {
 			cout << (field.at(y).at(x) ? 'X' : '.');
@@ -313,7 +313,7 @@ void print(vector< vector<bool> > field) {
 	}
 }
 //Print the tiles to console
-void print(vector< vector<char> > tiles) {
+void print(const vector< vector<char> > &tiles) {
 	for(int y = tiles.size()-1; y > -1; y--) {
 		for(int x = 0; x < tiles[y].size(); x++) {
 			cout << tiles.at(y).at(x);
