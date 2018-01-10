@@ -8,26 +8,29 @@ void print(vector< vector<bool> >);
 void print(vector< vector<char> >);
 void revealTile(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y);
 bool isValid(vector< vector<bool> > field, int x, int y);
-int countSurroundingMines(vector< vector<bool> > field, int x, int y);
+int countAdjacentMines(vector< vector<bool> > field, int x, int y);
 int calcScore(vector< vector<bool> > field, vector< vector<char> > tiles);
-bool revealMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y);
+bool revealAdjacentMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y);
 void play();
 bool playAgain();
 int main() {
+	//Play the game until we decide to quit
 	do {
 		play();
 	} while(playAgain());
 }
+//Check if we should play again
 bool playAgain() {
 	char c;
 	cout << "Play again? [Y/N]" << endl;
 	cin >> c;
 	return ((c == 'Y') || (c == 'y'));
 }
+//Play the game
 void play() {
 	cout << "Linesweeper!" << endl;
 	cout << "Explore the minefield, but don't step on the mines!" << endl;
-	cout << "You start at a random position on the field. Type in a number on your Numpad to move in a direction." << endl;
+	cout << "You start at a random position on the field. Type in a number on your Numpad and then press Enter to move in the specified direction." << endl;
 	cout << "MOVEMENT" << endl;
 	cout	<< "#	Direction" << endl
 			<< "1	Down-Left" << endl
@@ -50,19 +53,21 @@ void play() {
 	cin >> name;
 	cout << endl;
 	srand(time(0));
-	vector< vector<bool> > field;
 	
 	int height = 32;
 	int width = 32;
 	
+	//Determines which field spaces contain a mine and which do not contain a mine
+	vector< vector<bool> > field(height, vector<bool>(width, false));
+	
+	//Determines how the field is displayed on the screen
 	vector< vector<char> > tiles(height, vector<char>(width, '-'));
 	
+	//Randomly place mines everywhere
 	for(int y = 0; y < height; y++) {
-		vector<bool> fieldRow(width);
 		for(int x = 0; x < width; x++) {
-			fieldRow[x] = (rand()%5 == 0);
+			field.at(y).at(x) = (rand()%5 == 0);
 		}
-		field.push_back(fieldRow);
 	}
 	
 	/*
@@ -73,6 +78,7 @@ void play() {
 		}
 	}
 	*/
+	
 	//Initialize player position
 	int xStart = rand()%width;
 	int yStart = rand()%height;
@@ -83,21 +89,26 @@ void play() {
 	for(int y2 = y-3; y2 < y+4; y2++) {
 		for(int x2 = x-3; x2 < x+4; x2++) {
 			if(isValid(field, x2, y2)) {
-				field[y2][x2] = false;
+				field.at(y2).at(x2) = false;
 			}
 		}
 	}
-	//Reveal the clearing
-	revealMines(field, tiles, x, y);
-	tiles[y][x] = '@';
 	
+	//Reveal the player's immediate surroundings
+	revealAdjacentMines(field, tiles, x, y);
+	tiles.at(y).at(x) = '@';
+	
+	//Clear the screen, print the field, and start the game
 	bool active = true;
 	system("cls");
 	print(tiles);
 	
-	cout << countSurroundingMines(field, x, y) << " adjacent mines" << endl;
+	cout << countAdjacentMines(field, x, y) << " adjacent mines" << endl;
 	while(active) {
+		//Reveal what's at the player's position (we're going to move the player immediately after)
 		revealTile(field, tiles, x, y);
+		
+		//Get the move
 		int n;
 		cout << "Your move: ";
 		cin >> n;
@@ -155,24 +166,23 @@ void play() {
 				y++;
 				break;
 			default:
-				cout << "Invalid move. Use your Number Pad for input." << endl;
+				cout << "Invalid move. Must be within 1-9 inclusive." << endl;
 				break;
 		}
-		//Mark this tile as known
-		tiles[y][x] = '@';
-		if(!field[y][x]) {
+		if(!field.at(y).at(x)) {
 			//Mark this position as known
-			tiles[y][x] = '@';
-			bool revealed = revealMines(field, tiles, x, y);
-			//Place the player at this position
-			tiles[y][x] = '@';
+			tiles.at(y).at(x) = '@';
+			//If we have Smart Inference enabled, this will reveal adjacent mines
+			bool revealed = revealAdjacentMines(field, tiles, x, y);
+			//Display the player at this position
+			tiles.at(y).at(x) = '@';
 			print(tiles);
 			if(revealed)
 				cout << "Mines located." << endl;
-			cout << countSurroundingMines(field, x, y) << " adjacent mines" << endl;
+			cout << countAdjacentMines(field, x, y) << " adjacent mines" << endl;
 		} else {
 			//We stepped on a mine
-			//Set the 'X' tile onto the field
+			//Reveal the X tile
 			revealTile(field, tiles, x, y);
 			print(tiles);
 			cout << "You died!" << endl;
@@ -185,7 +195,7 @@ void play() {
 				x = xStart;
 				y = yStart;
 				
-				tiles[y][x] = '@';
+				tiles.at(y).at(x) = '@';
 				system("cls");
 				print(tiles);
 			} else {
@@ -196,43 +206,51 @@ void play() {
 		}
 	}
 }
+//For each known tile, we take number of surrounding mines plus one and add that to our score
 int calcScore(vector< vector<bool> > field, vector< vector<char> > tiles) {
 	int score = 0;
 	for(int y = 0; y < tiles.size(); y++) {
 		for(int x = 0; x < tiles[y].size(); x++) {
-			char c = tiles[y][x];
-			if(c != '-') {
-				score += 1+countSurroundingMines(field, x, y);
+			char c = tiles.at(y).at(x);
+			if(c == 'X') {
+				//We know this is a mine (only applies if Smart Inference is enabled)
+				score += 10;
+			} else if(c != '-') {
+				//We know this tile is not a mine
+				score += 1+countAdjacentMines(field, x, y);
 			}
 		}
 	}
 	return score;
 }
-
+//Reveal what's actually on this tile besides the player
 void revealTile(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y) {
-	if(field[y][x]) {
-		tiles[y][x] = 'X';
+	//Check if this is a mine
+	if(field.at(y).at(x)) {
+		tiles.at(y).at(x) = 'X';
 		return;
 	}
-	int count = countSurroundingMines(field, x, y);
+	int count = countAdjacentMines(field, x, y);
+	//Check if there are mines surrounding this tile
 	if(count > 0) {
-		tiles[y][x] = ('0' + count);
+		tiles.at(y).at(x) = ('0' + count);
 	} else {
-		tiles[y][x] = '.';
+		tiles.at(y).at(x) = '.';
 	}
 }
-//Automatically reveals unknown spaces for the player if enough information is known about surrounding mines
+//Automatically reveals unknown spaces around this tile if enough information is known about surrounding mines
 //Return true if any mines were revealed
-bool revealMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y) {
-	int mines = countSurroundingMines(field, x, y);
+bool revealAdjacentMines(vector< vector<bool> > field, vector< vector<char> > &tiles, int x, int y) {
+	int mines = countAdjacentMines(field, x, y);
 	int knownMines = 0;
 	int unknown = 0;
+	//Check adjacent tiles for mines
 	for(int x2 = x-1; x2 < x+2; x2++) {
 		for(int y2 = y-1; y2 < y+2; y2++) {
 			if(isValid(field, x2, y2)) {
-				if(tiles[y2][x2] == 'X')
+				if(tiles.at(y2).at(x2) == 'X')
 					knownMines++;
-				else if(tiles[y2][x2] == '-') {
+				else if(tiles.at(y2).at(x2) == '-') {
 					unknown++;
 				}
 			}
@@ -252,7 +270,7 @@ bool revealMines(vector< vector<bool> > field, vector< vector<char> > &tiles, in
 	}
 	
 	/*
-	//Smart inference
+	//Smart Inference (applies basic Minesweeper strategies automatically)
 	int unknownMines = (mines - knownMines);
 	if(unknownMines == 0 || unknownMines == unknown) {
 		for(int x2 = x-1; x2 < x+2; x2++) {
@@ -267,12 +285,13 @@ bool revealMines(vector< vector<bool> > field, vector< vector<char> > &tiles, in
 	*/
 	return false;
 }
-int countSurroundingMines(vector< vector<bool> > field, int x, int y) {
+//Count the number of mines surrounding (immediately adjacent to) this tile
+int countAdjacentMines(vector< vector<bool> > field, int x, int y) {
 	int count = 0;
 	for(int x2 = x-1; x2 < x+2; x2++) {
 		for(int y2 = y-1; y2 < y+2; y2++) {
 			if(isValid(field, x2, y2)) {
-				if(field[y2][x2]) {
+				if(field.at(y2).at(x2)) {
 					count++;
 				}
 			}
@@ -280,21 +299,24 @@ int countSurroundingMines(vector< vector<bool> > field, int x, int y) {
 	}
 	return count;
 }
+//Check if this position exists on the field
 bool isValid(vector< vector<bool> > field, int x, int y) {
 	return -1 < y && y < field.size() && -1 < x && x < field[y].size();
 }
+//Print the field to console
 void print(vector< vector<bool> > field) {
 	for(int y = 0; y < field.size(); y++) {
 		for(int x = 0; x < field[y].size(); x++) {
-			cout << (field[y][x] ? '-' : '.');
+			cout << (field.at(y).at(x) ? 'X' : '.');
 		}
 		cout << endl;
 	}
 }
+//Print the tiles to console
 void print(vector< vector<char> > tiles) {
 	for(int y = tiles.size()-1; y > -1; y--) {
 		for(int x = 0; x < tiles[y].size(); x++) {
-			cout << tiles[y][x];
+			cout << tiles.at(y).at(x);
 		}
 		cout << endl;
 	}
